@@ -22,22 +22,22 @@ fn not_match_full_line() -> TestResult {
 
 #[test]
 fn starts_with() -> TestResult {
-    run_test(r#"'foobarbaz' =~ ^foo"#, "true")
+    run_test(r#"'foobarbaz' =~ '^foo'"#, "true")
 }
 
 #[test]
 fn not_starts_with() -> TestResult {
-    run_test(r#"'foobarbaz' !~ ^foo"#, "false")
+    run_test(r#"'foobarbaz' !~ '^foo'"#, "false")
 }
 
 #[test]
 fn ends_with() -> TestResult {
-    run_test(r#"'foobarbaz' =~ baz$"#, "true")
+    run_test(r#"'foobarbaz' =~ 'baz$'"#, "true")
 }
 
 #[test]
 fn not_ends_with() -> TestResult {
-    run_test(r#"'foobarbaz' !~ baz$"#, "false")
+    run_test(r#"'foobarbaz' !~ 'baz$'"#, "false")
 }
 
 #[test]
