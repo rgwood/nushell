@@ -4054,8 +4054,11 @@ pub fn parse_math_expression(
             Expression {
                 expr: Expr::Operator(Operator::RegexMatch),
                 ..
-            } => rhs,
-            _ => rhs
+            } => {
+                eprintln!("Encountered a RegexMatch in the parser");
+                rhs
+            }
+            _ => rhs,
         };
 
         while op_prec <= last_prec && expr_stack.len() > 1 {

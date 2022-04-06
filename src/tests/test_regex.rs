@@ -47,12 +47,18 @@ fn not_ends_with() -> TestResult {
 
 #[test]
 fn where_works() -> TestResult {
-    run_test(r#"[{name: somefile.txt} {name: anotherfile.csv }] | where name =~ ^s | get name.0"#, "somefile.txt")
+    run_test(
+        r#"[{name: somefile.txt} {name: anotherfile.csv }] | where name =~ ^s | get name.0"#,
+        "somefile.txt",
+    )
 }
 
 #[test]
 fn where_not_works() -> TestResult {
-    run_test(r#"[{name: somefile.txt} {name: anotherfile.csv }] | where name !~ ^s | get name.0"#, "anotherfile.csv")
+    run_test(
+        r#"[{name: somefile.txt} {name: anotherfile.csv }] | where name !~ ^s | get name.0"#,
+        "anotherfile.csv",
+    )
 }
 
 #[test]
@@ -74,4 +80,3 @@ fn regex_on_int_fails() -> TestResult {
 fn not_regex_on_int_fails() -> TestResult {
     fail_test(r#"33 !~ foo"#, "Types mismatched")
 }
-

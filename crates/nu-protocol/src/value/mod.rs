@@ -2015,16 +2015,23 @@ impl Value {
         let span = span(&[self.span()?, rhs.span()?]);
 
         match (self, rhs) {
-            (Value::String { val: lhs, .. }, Value::String { val: rhs, span: rhs_span }) => {
+            (
+                Value::String { val: lhs, .. },
+                Value::String {
+                    val: rhs,
+                    span: rhs_span,
+                },
+            ) => {
                 // TODO: THIS IS SLOW AF, DO NOT USE THIS IN PRODUCTION
                 // gotta find a way to cache the regex instead of compiling it every time
                 let regex = Regex::new(rhs)
                     .map_err(|e| ShellError::UnsupportedInput(format!("{e}"), *rhs_span))?;
 
                 Ok(Value::Bool {
-                val: regex.is_match(lhs),
-                span,
-            })},
+                    val: regex.is_match(lhs),
+                    span,
+                })
+            }
             (Value::CustomValue { val: lhs, span }, rhs) => {
                 lhs.operation(*span, Operator::RegexMatch, op, rhs)
             }
@@ -2042,16 +2049,23 @@ impl Value {
         let span = span(&[self.span()?, rhs.span()?]);
 
         match (self, rhs) {
-            (Value::String { val: lhs, .. }, Value::String { val: rhs, span: rhs_span }) => {
+            (
+                Value::String { val: lhs, .. },
+                Value::String {
+                    val: rhs,
+                    span: rhs_span,
+                },
+            ) => {
                 // TODO: THIS IS SLOW AF, DO NOT USE THIS IN PRODUCTION
                 // gotta find a way to cache the regex instead of compiling it every time
                 let regex = Regex::new(rhs)
                     .map_err(|e| ShellError::UnsupportedInput(format!("{e}"), *rhs_span))?;
 
                 Ok(Value::Bool {
-                val: !regex.is_match(lhs),
-                span,
-            })},
+                    val: !regex.is_match(lhs),
+                    span,
+                })
+            }
             (Value::CustomValue { val: lhs, span }, rhs) => {
                 lhs.operation(*span, Operator::NotRegexMatch, op, rhs)
             }
