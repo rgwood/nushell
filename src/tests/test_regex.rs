@@ -6,8 +6,13 @@ fn contains() -> TestResult {
 }
 
 #[test]
+fn contains_case_insensitive() -> TestResult {
+    run_test(r#"'foobarbaz' =~ '(?i)BaR'"#, "true")
+}
+
+#[test]
 fn not_contains() -> TestResult {
-    run_test(r#"'foobarbaz' !~ bar"#, "false")
+    run_test(r#"'foobarbaz' !~ asdf"#, "true")
 }
 
 #[test]
@@ -41,6 +46,16 @@ fn not_ends_with() -> TestResult {
 }
 
 #[test]
+fn where_works() -> TestResult {
+    run_test(r#"[{name: somefile.txt} {name: anotherfile.csv }] | where name =~ ^s | get name.0"#, "somefile.txt")
+}
+
+#[test]
+fn where_not_works() -> TestResult {
+    run_test(r#"[{name: somefile.txt} {name: anotherfile.csv }] | where name !~ ^s | get name.0"#, "anotherfile.csv")
+}
+
+#[test]
 fn invalid_regex_fails() -> TestResult {
     fail_test(r#"'foo' =~ '['"#, "regex parse error")
 }
@@ -59,3 +74,4 @@ fn regex_on_int_fails() -> TestResult {
 fn not_regex_on_int_fails() -> TestResult {
     fail_test(r#"33 !~ foo"#, "Types mismatched")
 }
+
