@@ -2026,7 +2026,7 @@ impl Value {
                 span,
             })},
             (Value::CustomValue { val: lhs, span }, rhs) => {
-                lhs.operation(*span, Operator::Contains, op, rhs)
+                lhs.operation(*span, Operator::RegexMatch, op, rhs)
             }
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
@@ -2053,7 +2053,7 @@ impl Value {
                 span,
             })},
             (Value::CustomValue { val: lhs, span }, rhs) => {
-                lhs.operation(*span, Operator::NotContains, op, rhs)
+                lhs.operation(*span, Operator::NotRegexMatch, op, rhs)
             }
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
@@ -2085,7 +2085,7 @@ impl Value {
             }),
         }
     }
-    
+
     pub fn modulo(&self, op: Span, rhs: &Value) -> Result<Value, ShellError> {
         let span = span(&[self.span()?, rhs.span()?]);
 
