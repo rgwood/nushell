@@ -4049,14 +4049,16 @@ pub fn parse_math_expression(
         );
         error = error.or(err);
 
-        // TODO: if operator is a RegexMatch or NotRegexMatch, check whether rhs is a string literal and compile it if so
         let rhs = match op {
             Expression {
                 expr: Expr::Operator(Operator::RegexMatch),
                 ..
+            }
+            | Expression {
+                expr: Expr::Operator(Operator::NotRegexMatch),
+                ..
             } => {
-                eprintln!("Encountered a RegexMatch in the parser");
-                rhs
+                todo!("check whether rhs is a string literal. if so, convert it to a new CompiledRegex type")
             }
             _ => rhs,
         };
