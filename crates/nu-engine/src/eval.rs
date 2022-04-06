@@ -397,11 +397,11 @@ pub fn eval_expression(
                 }
                 Operator::Contains => {
                     let rhs = eval_expression(engine_state, stack, rhs)?;
-                    lhs.contains(op_span, &rhs)
+                    lhs.regex_match(op_span, &rhs)
                 }
                 Operator::NotContains => {
                     let rhs = eval_expression(engine_state, stack, rhs)?;
-                    lhs.not_contains(op_span, &rhs)
+                    lhs.not_regex_match(op_span, &rhs)
                 }
                 Operator::Modulo => {
                     let rhs = eval_expression(engine_state, stack, rhs)?;

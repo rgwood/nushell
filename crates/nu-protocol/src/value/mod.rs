@@ -12,6 +12,7 @@ pub use from_value::FromValue;
 use indexmap::map::IndexMap;
 use num_format::{Locale, ToFormattedString};
 pub use range::*;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 pub use stream::*;
 use sys_locale::get_locale;
@@ -2010,16 +2011,49 @@ impl Value {
         }
     }
 
-    pub fn contains(&self, op: Span, rhs: &Value) -> Result<Value, ShellError> {
+    pub fn regex_match(&self, op: Span, rhs: &Value) -> Result<Value, ShellError> {
         let span = span(&[self.span()?, rhs.span()?]);
 
         match (self, rhs) {
-            (Value::String { val: lhs, .. }, Value::String { val: rhs, .. }) => Ok(Value::Bool {
-                val: lhs.contains(rhs),
+            (Value::String { val: lhs, .. }, Value::String { val: rhs, span: rhs_span }) => {
+                // TODO: THIS IS SLOW AF, DO NOT USE THIS IN PRODUCTION
+                // gotta find a way to cache the regex instead of compiling it every time
+                let regex = Regex::new(rhs)
+                    .map_err(|e| ShellError::UnsupportedInput(format!("{e}"), *rhs_span))?;
+
+                Ok(Value::Bool {
+                val: regex.is_match(lhs),
                 span,
-            }),
+            })},
             (Value::CustomValue { val: lhs, span }, rhs) => {
                 lhs.operation(*span, Operator::Contains, op, rhs)
+            }
+            _ => Err(ShellError::OperatorMismatch {
+                op_span: op,
+                lhs_ty: self.get_type(),
+                lhs_span: self.span()?,
+                rhs_ty: rhs.get_type(),
+                rhs_span: rhs.span()?,
+            }),
+        }
+    }
+
+    pub fn not_regex_match(&self, op: Span, rhs: &Value) -> Result<Value, ShellError> {
+        let span = span(&[self.span()?, rhs.span()?]);
+
+        match (self, rhs) {
+            (Value::String { val: lhs, .. }, Value::String { val: rhs, span: rhs_span }) => {
+                // TODO: THIS IS SLOW AF, DO NOT USE THIS IN PRODUCTION
+                // gotta find a way to cache the regex instead of compiling it every time
+                let regex = Regex::new(rhs)
+                    .map_err(|e| ShellError::UnsupportedInput(format!("{e}"), *rhs_span))?;
+
+                Ok(Value::Bool {
+                val: !regex.is_match(lhs),
+                span,
+            })},
+            (Value::CustomValue { val: lhs, span }, rhs) => {
+                lhs.operation(*span, Operator::NotContains, op, rhs)
             }
             _ => Err(ShellError::OperatorMismatch {
                 op_span: op,
@@ -2051,28 +2085,7 @@ impl Value {
             }),
         }
     }
-
-    pub fn not_contains(&self, op: Span, rhs: &Value) -> Result<Value, ShellError> {
-        let span = span(&[self.span()?, rhs.span()?]);
-
-        match (self, rhs) {
-            (Value::String { val: lhs, .. }, Value::String { val: rhs, .. }) => Ok(Value::Bool {
-                val: !lhs.contains(rhs),
-                span,
-            }),
-            (Value::CustomValue { val: lhs, span }, rhs) => {
-                lhs.operation(*span, Operator::NotContains, op, rhs)
-            }
-            _ => Err(ShellError::OperatorMismatch {
-                op_span: op,
-                lhs_ty: self.get_type(),
-                lhs_span: self.span()?,
-                rhs_ty: rhs.get_type(),
-                rhs_span: rhs.span()?,
-            }),
-        }
-    }
-
+    
     pub fn modulo(&self, op: Span, rhs: &Value) -> Result<Value, ShellError> {
         let span = span(&[self.span()?, rhs.span()?]);
 
