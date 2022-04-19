@@ -19,6 +19,10 @@ impl SQLiteDatabase {
         }
     }
 
+    pub fn query(&self, sql: String) -> Result<Value, ShellError> {
+        todo!("not yet implemented...")
+    }
+
     pub fn describe(&self) -> String {
         format!("A SQLite database at {:?}", self.path)
     }
