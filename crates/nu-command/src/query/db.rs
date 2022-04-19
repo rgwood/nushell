@@ -65,7 +65,8 @@ fn query_input(input: Value, head: Span, sql: &Spanned<String>) -> Value {
             let sqlite = val.as_any().downcast_ref::<SQLiteDatabase>();
 
             if let Some(db) = sqlite {
-                eprintln!("db path: {:?}", db.path);
+                // eprintln!("db path: {:?}", db.path);
+                todo!();
                 return Value::string("OMG it's a SQLite database!!!!".to_string(), head);
             }
 

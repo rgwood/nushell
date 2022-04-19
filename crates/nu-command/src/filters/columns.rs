@@ -73,6 +73,17 @@ fn getcol(
                 .map(move |x| Value::String { val: x, span })
                 .into_pipeline_data(engine_state.ctrlc.clone()))
         }
+        PipelineData::Value(
+            Value::CustomValue { val, span },
+            ..,
+        ) => {
+            let input_as_base_value = val.to_base_value(span)?;
+            let input_cols = get_columns(&[input_as_base_value]);
+            Ok(input_cols
+                .into_iter()
+                .map(move |x| Value::String { val: x, span })
+                .into_pipeline_data(engine_state.ctrlc.clone()))
+        }
         PipelineData::ListStream(stream, ..) => {
             let v: Vec<_> = stream.into_iter().collect();
             let input_cols = get_columns(&v);

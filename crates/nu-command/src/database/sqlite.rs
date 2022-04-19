@@ -6,8 +6,22 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SQLiteDatabase {
-    // TODO: should this be a path or an open connection?
-    pub path: PathBuf,
+    // I considered storing a SQLite connection here, but decided against it
+    // because 1) YAGNI, 2) it's not obvious how cloning a connection
+    // could work. We can revisit this if we find a compelling use case.
+    path: PathBuf,
+}
+
+impl SQLiteDatabase {
+    pub fn new(path: &Path) -> SQLiteDatabase {
+        SQLiteDatabase {
+            path: PathBuf::from(path),
+        }
+    }
+
+    pub fn describe(&self) -> String {
+        format!("A SQLite database at {:?}", self.path)
+    }
 }
 
 impl CustomValue for SQLiteDatabase {
@@ -26,26 +40,13 @@ impl CustomValue for SQLiteDatabase {
         self.typetag_name().to_string()
     }
 
-    // TODO: write a test that exercises this
     fn to_base_value(&self, span: Span) -> Result<Value, ShellError> {
-
-        eprintln!("to_base_value()...");
-
         let db = open_sqlite_db(&self.path, span)?;
-
-        match read_sqlite_db(db, span) {
-            Ok(data) => Ok(data),
-            Err(err) => Err(ShellError::GenericError(
-                "Failed to read from SQLite database".into(),
-                err.to_string(),
-                Some(span),
-                None,
-                Vec::new(),
-            )),
-        }
-
-        // let p = &self.path;
-        // Ok(Value::string(format!("a connection for {p:?}"), span))
+        to_shell_error(
+            read_entire_sqlite_db(db, span),
+            "Failed to read from SQLite database",
+            span,
+        )
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -53,71 +54,57 @@ impl CustomValue for SQLiteDatabase {
     }
 
     fn follow_path_int(&self, _count: usize, span: Span) -> Result<Value, ShellError> {
-        eprintln!("Path requested: '{_count}'");
-        
-        todo!("path int not implemented")
+        // In theory we could support this, but tables don't have an especially well-defined order
+        Err(ShellError::IncompatiblePathAccess("SQLite databases do not support integer-indexed access. Try specifying a table name instead".into(), span))
     }
 
     fn follow_path_string(&self, _column_name: String, span: Span) -> Result<Value, ShellError> {
-        eprintln!("Path requested: '{_column_name}'");
+        let db = open_sqlite_db(&self.path, span)?;
 
-        todo!("path string not implemented")
+        to_shell_error(
+            read_single_table(db, _column_name, span),
+            "Failed to read from SQLite database",
+            span,
+        )
     }
 
     fn typetag_name(&self) -> &'static str {
-        // TODO: I don't really understand how this is used
-        "SQLiteConnection"
+        "SQLiteDatabase"
     }
 
     fn typetag_deserialize(&self) {
-        // TODO: this is what the other custom_value implementations do but is it right?
         unimplemented!("typetag_deserialize")
     }
 }
 
-pub fn open_sqlite_db(path: &Path, call_span: Span) -> Result<Connection, nu_protocol::ShellError> {
-    let path = path.to_string_lossy().to_string();
-
-    match Connection::open(path) {
-        Ok(conn) => Ok(conn),
+// TODO: is there a more elegant way to map rusqlite errors to ShellErrors?
+fn to_shell_error<T>(
+    result: Result<T, rusqlite::Error>,
+    message: &str,
+    span: Span,
+) -> Result<T, nu_protocol::ShellError> {
+    match result {
+        Ok(val) => Ok(val),
         Err(err) => Err(ShellError::GenericError(
-            "Failed to open SQLite database".into(),
+            message.to_string(),
             err.to_string(),
-            Some(call_span),
+            Some(span),
             None,
             Vec::new(),
         )),
     }
 }
 
-pub fn open_and_read_sqlite_db(
-    path: &Path,
-    call_span: Span,
-) -> Result<Value, nu_protocol::ShellError> {
+fn open_sqlite_db(path: &Path, call_span: Span) -> Result<Connection, nu_protocol::ShellError> {
     let path = path.to_string_lossy().to_string();
-
-    match Connection::open(path) {
-        Ok(conn) => match read_sqlite_db(conn, call_span) {
-            Ok(data) => Ok(data),
-            Err(err) => Err(ShellError::GenericError(
-                "Failed to read from SQLite database".into(),
-                err.to_string(),
-                Some(call_span),
-                None,
-                Vec::new(),
-            )),
-        },
-        Err(err) => Err(ShellError::GenericError(
-            "Failed to open SQLite database".into(),
-            err.to_string(),
-            Some(call_span),
-            None,
-            Vec::new(),
-        )),
-    }
+    to_shell_error(
+        Connection::open(path),
+        "Failed to open SQLite database",
+        call_span,
+    )
 }
 
-pub fn read_sqlite_db(conn: Connection, call_span: Span) -> Result<Value, rusqlite::Error> {
+fn read_entire_sqlite_db(conn: Connection, call_span: Span) -> Result<Value, rusqlite::Error> {
     let mut table_names: Vec<String> = Vec::new();
     let mut tables: Vec<Value> = Vec::new();
 
@@ -147,6 +134,27 @@ pub fn read_sqlite_db(conn: Connection, call_span: Span) -> Result<Value, rusqli
     Ok(Value::Record {
         cols: table_names,
         vals: tables,
+        span: call_span,
+    })
+}
+
+fn read_single_table(
+    conn: Connection,
+    table_name: String,
+    call_span: Span,
+) -> Result<Value, rusqlite::Error> {
+    // TODO should I parameterize this? SQL injection and all that
+    let mut table_stmt = conn.prepare(&format!("select * from [{}]", table_name))?;
+    let mut table_rows = table_stmt.query([])?;
+
+    let mut rows = Vec::new();
+
+    while let Some(table_row) = table_rows.next()? {
+        rows.push(convert_sqlite_row_to_nu_value(table_row, call_span))
+    }
+
+    Ok(Value::List {
+        vals: rows,
         span: call_span,
     })
 }
@@ -202,7 +210,7 @@ mod test {
     #[test]
     fn can_read_empty_db() {
         let db = Connection::open_in_memory().unwrap();
-        let converted_db = read_sqlite_db(db, Span::test_data()).unwrap();
+        let converted_db = read_entire_sqlite_db(db, Span::test_data()).unwrap();
 
         let expected = Value::Record {
             cols: vec![],
@@ -226,7 +234,7 @@ mod test {
             [],
         )
         .unwrap();
-        let converted_db = read_sqlite_db(db, Span::test_data()).unwrap();
+        let converted_db = read_entire_sqlite_db(db, Span::test_data()).unwrap();
 
         let expected = Value::Record {
             cols: vec!["person".to_string()],
@@ -260,7 +268,7 @@ mod test {
         db.execute("INSERT INTO item (id, name) VALUES (456, 'foo bar')", [])
             .unwrap();
 
-        let converted_db = read_sqlite_db(db, span).unwrap();
+        let converted_db = read_entire_sqlite_db(db, span).unwrap();
 
         let expected = Value::Record {
             cols: vec!["item".to_string()],

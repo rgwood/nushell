@@ -121,9 +121,7 @@ impl Command for Open {
 
                 if file.read_exact(&mut buf).is_ok() && buf == sqlite_magic_bytes {
                     let custom_val = Value::CustomValue {
-                        val: Box::new(SQLiteDatabase {
-                            path: PathBuf::from(path),
-                        }),
+                        val: Box::new(SQLiteDatabase::new(path)),
                         span: call.head,
                     };
 
