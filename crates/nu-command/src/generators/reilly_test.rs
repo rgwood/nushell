@@ -16,8 +16,7 @@ impl Command for ReillyTest {
     }
 
     fn signature(&self) -> Signature {
-        Signature::build("reilly-test")
-            .category(Category::Generators)
+        Signature::build("reilly-test").category(Category::Generators)
     }
 
     fn usage(&self) -> &str {
@@ -35,14 +34,10 @@ impl Command for ReillyTest {
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![
-            Example {
-                description: "blah blah",
-                example: "foo bar",
-                result: None,
-            },
-        ]
+        vec![Example {
+            description: "blah blah",
+            example: "foo bar",
+            result: None,
+        }]
     }
 }
-
-

@@ -2,8 +2,7 @@ use nu_engine::CallExt;
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},
-    Category, Example, PipelineData, ShellError, Signature, Span, Spanned,
-    SyntaxShape, Value,
+    Category, Example, PipelineData, ShellError, Signature, Span, Spanned, SyntaxShape, Value,
 };
 
 use crate::database::SQLiteDatabase;
@@ -81,7 +80,11 @@ fn query_input(input: Value, head: Span, sql: &Spanned<String>) -> Value {
             };
 
             Value::Error {
-                error: ShellError::PipelineMismatch("a SQLite database".to_string(), head, input_span),
+                error: ShellError::PipelineMismatch(
+                    "a SQLite database".to_string(),
+                    head,
+                    input_span,
+                ),
             }
         }
     }
