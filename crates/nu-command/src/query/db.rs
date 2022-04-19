@@ -1,13 +1,12 @@
-use chrono::Local;
 use nu_engine::CallExt;
 use nu_protocol::{
     ast::Call,
     engine::{Command, EngineState, Stack},
-    Category, Example, IntoPipelineData, PipelineData, ShellError, Signature, Span, Spanned,
+    Category, Example, PipelineData, ShellError, Signature, Span, Spanned,
     SyntaxShape, Value,
 };
 
-use crate::database::SQLiteConnection;
+use crate::database::SQLiteDatabase;
 
 #[derive(Clone)]
 pub struct SubCommand;
@@ -31,7 +30,9 @@ impl Command for SubCommand {
         "Query a database using SQL."
     }
 
-    // TODO: add search terms
+    fn search_terms(&self) -> Vec<&str> {
+        vec!["database", "SQLite"]
+    }
 
     fn run(
         &self,
@@ -47,14 +48,12 @@ impl Command for SubCommand {
             move |value| query_input(value, head, &sql),
             engine_state.ctrlc.clone(),
         )
-        // TODO: check input type
-        // Ok(Value::string("mockup".to_string(), call.head).into_pipeline_data())
     }
 
     fn examples(&self) -> Vec<Example> {
         vec![Example {
-            description: "blah blah blah",
-            example: r#""2021-10-22 20:00:12 +01:00" | date format "%Y-%m-%d""#,
+            description: "Get 1 table out of a SQLite database",
+            example: r#"open foo.db | query db "SELECT * FROM Bar""#,
             result: None,
         }]
     }
@@ -63,9 +62,10 @@ impl Command for SubCommand {
 fn query_input(input: Value, head: Span, sql: &Spanned<String>) -> Value {
     match input {
         Value::CustomValue { val, span } => {
-            let sqlite = val.as_any().downcast_ref::<SQLiteConnection>();
+            let sqlite = val.as_any().downcast_ref::<SQLiteDatabase>();
 
             if let Some(db) = sqlite {
+                eprintln!("db path: {:?}", db.path);
                 return Value::string("OMG it's a SQLite database!!!!".to_string(), head);
             }
 
@@ -76,7 +76,7 @@ fn query_input(input: Value, head: Span, sql: &Spanned<String>) -> Value {
         _ => {
             let input_span = match input.span() {
                 Ok(sp) => sp,
-                Err(_) => head, // FIXME: is there a better span to use here?
+                Err(_) => head, // Best-effort fallback, this should never fail
             };
 
             Value::Error {

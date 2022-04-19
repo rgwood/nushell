@@ -25,6 +25,7 @@ mod viewers;
 
 pub use conversions::*;
 pub use core_commands::*;
+pub use database::*;
 pub use date::*;
 pub use default_context::*;
 pub use deprecated::*;
