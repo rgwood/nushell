@@ -60,7 +60,11 @@ impl Command for SubCommand {
 
 fn query_input(input: Value, call_span: Span, sql: &Spanned<String>) -> Value {
     // this fn has slightly awkward error handling because it needs to jam errors into Value instead of returning a Result
-    if let Value::CustomValue { val, span: input_span } = input {
+    if let Value::CustomValue {
+        val,
+        span: input_span,
+    } = input
+    {
         let sqlite = val.as_any().downcast_ref::<SQLiteDatabase>();
 
         if let Some(db) = sqlite {
@@ -71,7 +75,11 @@ fn query_input(input: Value, call_span: Span, sql: &Spanned<String>) -> Value {
         }
 
         return Value::Error {
-            error: ShellError::PipelineMismatch("a SQLite database".to_string(), call_span, input_span),
+            error: ShellError::PipelineMismatch(
+                "a SQLite database".to_string(),
+                call_span,
+                input_span,
+            ),
         };
     }
 

@@ -6,9 +6,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SQLiteDatabase {
-    // I considered storing a SQLite connection here, but decided against it
-    // because 1) YAGNI, 2) it's not obvious how cloning a connection
-    // could work. We can revisit this if we find a compelling use case.
+    // I considered storing a SQLite connection here, but decided against it because
+    // 1) YAGNI, 2) it's not obvious how cloning a connection could work, 3) state
+    // management gets tricky quick. Revisit this approach if we find a compelling use case.
     path: PathBuf,
 }
 
@@ -118,7 +118,7 @@ fn read_entire_sqlite_db(conn: Connection, call_span: Span) -> Result<Value, rus
     let mut tables: Vec<Value> = Vec::new();
 
     let mut get_table_names =
-        conn.prepare("SELECT name from sqlite_master where type = 'table'")?;
+        conn.prepare("SELECT name FROM sqlite_master WHERE type = 'table'")?;
     let rows = get_table_names.query_map([], |row| row.get(0))?;
 
     for row in rows {
@@ -148,11 +148,11 @@ fn read_entire_sqlite_db(conn: Connection, call_span: Span) -> Result<Value, rus
 }
 
 fn run_sql_query(conn: Connection, sql: String, call_span: Span) -> Result<Value, rusqlite::Error> {
-    let mut table_stmt = conn.prepare(&sql)?;
-    let mut table_contents = table_stmt.query([])?;
+    let mut stmt = conn.prepare(&sql)?;
+    let mut results = stmt.query([])?;
     let mut nu_records = Vec::new();
 
-    while let Some(table_row) = table_contents.next()? {
+    while let Some(table_row) = results.next()? {
         nu_records.push(convert_sqlite_row_to_nu_value(table_row, call_span))
     }
 
@@ -167,11 +167,11 @@ fn read_single_table(
     table_name: String,
     call_span: Span,
 ) -> Result<Value, rusqlite::Error> {
-    let mut table_stmt = conn.prepare(&format!("SELECT * FROM {}", table_name))?;
-    let mut table_contents = table_stmt.query([])?;
+    let mut stmt = conn.prepare(&format!("SELECT * FROM {}", table_name))?;
+    let mut results = stmt.query([])?;
     let mut nu_records = Vec::new();
 
-    while let Some(table_row) = table_contents.next()? {
+    while let Some(table_row) = results.next()? {
         nu_records.push(convert_sqlite_row_to_nu_value(table_row, call_span))
     }
 
