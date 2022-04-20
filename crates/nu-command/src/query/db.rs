@@ -68,7 +68,7 @@ fn query_input(input: Value, call_span: Span, sql: &Spanned<String>) -> Value {
         let sqlite = val.as_any().downcast_ref::<SQLiteDatabase>();
 
         if let Some(db) = sqlite {
-            return match db.query(sql.item.clone(), call_span) {
+            return match db.query(sql, call_span) {
                 Ok(val) => val,
                 Err(error) => Value::Error { error },
             };

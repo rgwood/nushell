@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use nu_protocol::{CustomValue, ShellError, Span, Value};
+use nu_protocol::{CustomValue, ShellError, Span, Spanned, Value};
 use rusqlite::{types::ValueRef, Connection, Row};
 use serde::{Deserialize, Serialize};
 
@@ -19,12 +19,12 @@ impl SQLiteDatabase {
         }
     }
 
-    pub fn query(&self, sql: String, call_span: Span) -> Result<Value, ShellError> {
+    pub fn query(&self, sql: &Spanned<String>, call_span: Span) -> Result<Value, ShellError> {
         let db = open_sqlite_db(&self.path, call_span)?;
         to_shell_error(
-            run_sql_query(db, sql, call_span),
+            run_sql_query(db, sql),
             "Failed to query SQLite database",
-            call_span,
+            sql.span,
         )
     }
 
@@ -147,18 +147,18 @@ fn read_entire_sqlite_db(conn: Connection, call_span: Span) -> Result<Value, rus
     })
 }
 
-fn run_sql_query(conn: Connection, sql: String, call_span: Span) -> Result<Value, rusqlite::Error> {
-    let mut stmt = conn.prepare(&sql)?;
+fn run_sql_query(conn: Connection, sql: &Spanned<String>) -> Result<Value, rusqlite::Error> {
+    let mut stmt = conn.prepare(&sql.item)?;
     let mut results = stmt.query([])?;
     let mut nu_records = Vec::new();
 
     while let Some(table_row) = results.next()? {
-        nu_records.push(convert_sqlite_row_to_nu_value(table_row, call_span))
+        nu_records.push(convert_sqlite_row_to_nu_value(table_row, sql.span))
     }
 
     Ok(Value::List {
         vals: nu_records,
-        span: call_span,
+        span: sql.span,
     })
 }
 
