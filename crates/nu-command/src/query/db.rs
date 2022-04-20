@@ -41,10 +41,10 @@ impl Command for SubCommand {
         input: PipelineData,
     ) -> Result<nu_protocol::PipelineData, nu_protocol::ShellError> {
         let sql: Spanned<String> = call.req(engine_state, stack, 0)?;
-        let head = call.head;
+        let call_head = call.head;
 
         input.map(
-            move |value| query_input(value, head, &sql),
+            move |value| query_input(value, call_head, &sql),
             engine_state.ctrlc.clone(),
         )
     }
@@ -58,36 +58,31 @@ impl Command for SubCommand {
     }
 }
 
-fn query_input(input: Value, head: Span, sql: &Spanned<String>) -> Value {
-    match input {
-        Value::CustomValue { val, span } => {
-            let sqlite = val.as_any().downcast_ref::<SQLiteDatabase>();
+fn query_input(input: Value, call_span: Span, sql: &Spanned<String>) -> Value {
+    // this fn has slightly awkward error handling because it needs to jam errors into Value instead of returning a Result
+    if let Value::CustomValue { val, span: input_span } = input {
+        let sqlite = val.as_any().downcast_ref::<SQLiteDatabase>();
 
-            if let Some(db) = sqlite {
-                // TODO: how can I run a SQL query which might fail, when this fn returns Value?
-                db.query("asdf".to_string());
-
-
-                return Value::string("OMG it's a SQLite database!!!!".to_string(), head);
-            }
-
-            Value::Error {
-                error: ShellError::PipelineMismatch("a SQLite database".to_string(), head, span),
-            }
-        }
-        _ => {
-            let input_span = match input.span() {
-                Ok(sp) => sp,
-                Err(_) => head, // Best-effort fallback, this should never fail
+        if let Some(db) = sqlite {
+            return match db.query(sql.item.clone(), call_span) {
+                Ok(val) => val,
+                Err(error) => Value::Error { error },
             };
-
-            Value::Error {
-                error: ShellError::PipelineMismatch(
-                    "a SQLite database".to_string(),
-                    head,
-                    input_span,
-                ),
-            }
         }
+
+        return Value::Error {
+            error: ShellError::PipelineMismatch("a SQLite database".to_string(), call_span, input_span),
+        };
+    }
+
+    match input.span() {
+        Ok(input_span) => Value::Error {
+            error: ShellError::PipelineMismatch(
+                "a SQLite database".to_string(),
+                call_span,
+                input_span,
+            ),
+        },
+        Err(err) => Value::Error { error: err },
     }
 }

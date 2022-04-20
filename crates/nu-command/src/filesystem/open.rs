@@ -11,7 +11,7 @@ use std::io::{BufReader, Read, Seek};
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(Clone)]
 pub struct Open;

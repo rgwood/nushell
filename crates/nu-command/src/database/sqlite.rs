@@ -19,8 +19,13 @@ impl SQLiteDatabase {
         }
     }
 
-    pub fn query(&self, sql: String) -> Result<Value, ShellError> {
-        todo!("not yet implemented...")
+    pub fn query(&self, sql: String, call_span: Span) -> Result<Value, ShellError> {
+        let db = open_sqlite_db(&self.path, call_span)?;
+        to_shell_error(
+            run_sql_query(db, sql, call_span),
+            "Failed to query SQLite database",
+            call_span,
+        )
     }
 
     pub fn describe(&self) -> String {
@@ -142,23 +147,36 @@ fn read_entire_sqlite_db(conn: Connection, call_span: Span) -> Result<Value, rus
     })
 }
 
+fn run_sql_query(conn: Connection, sql: String, call_span: Span) -> Result<Value, rusqlite::Error> {
+    let mut table_stmt = conn.prepare(&sql)?;
+    let mut table_contents = table_stmt.query([])?;
+    let mut nu_records = Vec::new();
+
+    while let Some(table_row) = table_contents.next()? {
+        nu_records.push(convert_sqlite_row_to_nu_value(table_row, call_span))
+    }
+
+    Ok(Value::List {
+        vals: nu_records,
+        span: call_span,
+    })
+}
+
 fn read_single_table(
     conn: Connection,
     table_name: String,
     call_span: Span,
 ) -> Result<Value, rusqlite::Error> {
-    // TODO should I parameterize this? SQL injection and all that
-    let mut table_stmt = conn.prepare(&format!("select * from [{}]", table_name))?;
-    let mut table_rows = table_stmt.query([])?;
+    let mut table_stmt = conn.prepare("select * from [?]")?;
+    let mut table_contents = table_stmt.query([table_name])?;
+    let mut nu_records = Vec::new();
 
-    let mut rows = Vec::new();
-
-    while let Some(table_row) = table_rows.next()? {
-        rows.push(convert_sqlite_row_to_nu_value(table_row, call_span))
+    while let Some(table_row) = table_contents.next()? {
+        nu_records.push(convert_sqlite_row_to_nu_value(table_row, call_span))
     }
 
     Ok(Value::List {
-        vals: rows,
+        vals: nu_records,
         span: call_span,
     })
 }
