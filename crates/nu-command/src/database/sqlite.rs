@@ -167,8 +167,8 @@ fn read_single_table(
     table_name: String,
     call_span: Span,
 ) -> Result<Value, rusqlite::Error> {
-    let mut table_stmt = conn.prepare("select * from [?]")?;
-    let mut table_contents = table_stmt.query([table_name])?;
+    let mut table_stmt = conn.prepare(&format!("SELECT * FROM {}", table_name))?;
+    let mut table_contents = table_stmt.query([])?;
     let mut nu_records = Vec::new();
 
     while let Some(table_row) = table_contents.next()? {
