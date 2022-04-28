@@ -47,11 +47,11 @@ jobs:
           command: fmt
           args: --all -- --check
 
-      - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all ${{ matrix.flags }} -- -D warnings -D clippy::unwrap_used -A clippy::needless_collect
+#      - name: Clippy
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: clippy
+#          args: --all ${{ matrix.flags }} -- -D warnings -D clippy::unwrap_used -A clippy::needless_collect
 
       - name: Build Nushell
         uses: actions-rs/cargo@v1
