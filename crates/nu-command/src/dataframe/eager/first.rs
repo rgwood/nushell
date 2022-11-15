@@ -46,7 +46,7 @@ impl Command for FirstDF {
             },
             Example {
                 description: "Return the first two rows of a dataframe",
-                example: "[[a b]; [1 2] [3 4]] | into df | first 2",
+                example: "[[a b]; [1 2] [3 4]] | into df | take 2",
                 result: Some(
                     NuDataFrame::try_from_columns(vec![
                         Column::new(
