@@ -1,6 +1,3 @@
-use std::collections::VecDeque;
-
-use itertools::Itertools;
 use nu_engine::CallExt;
 use nu_protocol::ast::Call;
 use nu_protocol::engine::{Command, EngineState, Stack};
@@ -8,6 +5,7 @@ use nu_protocol::{
     Category, Example, IntoInterruptiblePipelineData, PipelineData, ShellError, Signature, Span,
     Spanned, SyntaxShape, Type, Value,
 };
+use std::collections::VecDeque;
 
 #[derive(Clone)]
 pub struct Take;
@@ -141,7 +139,7 @@ impl Command for Take {
                 if take_last {
                     // only keep last `rows_desired` rows in memory
                     let mut buf = VecDeque::<_>::new();
-                    for row in ls.into_iter() {
+                    for row in ls {
                         if buf.len() == rows_desired {
                             buf.pop_front();
                         }
