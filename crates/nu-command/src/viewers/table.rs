@@ -21,7 +21,7 @@ use std::{
 use terminal_size::{Height, Width};
 use url::Url;
 
-const STREAM_PAGE_SIZE: usize = 1000;
+const STREAM_PAGE_SIZE: usize = 10;
 const STREAM_TIMEOUT_CHECK_INTERVAL: usize = 100;
 const INDEX_COLUMN_NAME: &str = "index";
 
