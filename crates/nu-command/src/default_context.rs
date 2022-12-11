@@ -448,6 +448,7 @@ pub fn create_default_context() -> EngineState {
         // Generators
         bind_command! {
             Cal,
+            ErrMaker,
             Seq,
             SeqDate,
             SeqChar,
