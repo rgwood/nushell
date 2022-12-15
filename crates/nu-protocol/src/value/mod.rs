@@ -631,6 +631,14 @@ impl Value {
         self.follow_cell_path_helper(cell_path, insensitive, false)
     }
 
+    pub fn follow_single_path_member(
+        self,
+        member: &PathMember,
+        insensitive: bool,
+    ) -> Result<Value, ShellError> {
+        self.follow_cell_path_helper(std::slice::from_ref(member), insensitive, true)
+    }
+
     fn follow_cell_path_helper(
         self,
         cell_path: &[PathMember],

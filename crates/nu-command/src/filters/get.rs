@@ -2,8 +2,8 @@ use nu_engine::CallExt;
 use nu_protocol::ast::{Call, CellPath};
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Category, Example, IntoInterruptiblePipelineData, IntoPipelineData, PipelineData, Signature,
-    Span, SyntaxShape, Type, Value,
+    Category, Example, IntoInterruptiblePipelineData, PipelineData, Signature, Span, SyntaxShape,
+    Type, Value,
 };
 
 #[derive(Clone)]
@@ -37,7 +37,7 @@ impl Command for Get {
             .rest("rest", SyntaxShape::CellPath, "additional cell paths")
             .switch(
                 "ignore-errors",
-                "when there are empty cells, instead of erroring out, replace them with nothing",
+                "when data can't be accessed, return nothing instead of erroring out",
                 Some('i'),
             )
             .switch(
@@ -64,24 +64,19 @@ impl Command for Get {
         let metadata = input.metadata();
 
         if rest.is_empty() {
-            let output = input.follow_cell_path_streaming_try_2(cell_path.members, !sensitive);
-            // let output = input
-            //     .follow_cell_path(&cell_path.members, call.head, !sensitive)
-            //     .map(|x| x.into_pipeline_data());
-
-            if ignore_errors {
-                match output {
-                    Ok(output) => Ok(output),
-                    Err(_) => Ok(Value::Nothing { span: call.head }.into_pipeline_data()),
-                }
-            } else {
-                output
-            }
+            input.follow_cell_path(
+                cell_path.members,
+                !sensitive,
+                ignore_errors,
+            )
         } else {
             let mut output = vec![];
 
             let paths = vec![cell_path].into_iter().chain(rest);
 
+            // FIXME: can we do this without collecting the pipeline into a value?
+            // Bit tricky to handle all edge cases (ex: `get foo 0` with mixed int and string paths)
+            // but maybe we could special-case for when all paths are ints (`get 0 2`)
             let input = input.into_value(span);
 
             for path in paths {
