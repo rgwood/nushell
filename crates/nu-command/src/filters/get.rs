@@ -64,9 +64,10 @@ impl Command for Get {
         let metadata = input.metadata();
 
         if rest.is_empty() {
-            let output = input
-                .follow_cell_path(&cell_path.members, call.head, !sensitive)
-                .map(|x| x.into_pipeline_data());
+            let output = input.follow_cell_path_streaming_try_2(cell_path.members, !sensitive);
+            // let output = input
+            //     .follow_cell_path(&cell_path.members, call.head, !sensitive)
+            //     .map(|x| x.into_pipeline_data());
 
             if ignore_errors {
                 match output {

@@ -4,7 +4,7 @@ use crate::{
     format_error, Config, ListStream, RawStream, ShellError, Span, Value,
 };
 use nu_utils::{stderr_write_all_and_flush, stdout_write_all_and_flush};
-use std::sync::{atomic::AtomicBool, Arc};
+use std::{sync::{atomic::AtomicBool, Arc}, cell};
 
 const LINE_ENDING: &str = if cfg!(target_os = "windows") {
     "\r\n"
@@ -280,6 +280,98 @@ impl PipelineData {
             PipelineData::Value(v, ..) => v.follow_cell_path(cell_path, insensitive),
             _ => Err(ShellError::IOError("can't follow stream paths".into())),
         }
+    }
+    pub fn follow_cell_path_streaming(
+        self,
+        cell_path: Vec<PathMember>,
+        insensitive: bool,
+    ) -> Result<PipelineData, ShellError> {
+        if let Some((first, remaining)) = cell_path.split_first() {
+            match first {
+                // The first path member is a column, so we can just apply the whole cell path to every row
+                PathMember::String { val, span } => {
+                    match self {
+                        PipelineData::ListStream(stream, ..) => {
+                            let ctrlc = stream.ctrlc.clone();
+                            // TODO: error handling?
+                            let iter = stream
+                                .filter_map(move |val| val.follow_cell_path(&cell_path, insensitive).ok());
+                            let new_stream = ListStream {
+                                stream: Box::new(iter),
+                                ctrlc,
+                            };
+                            Ok(PipelineData::ListStream(new_stream, None))
+                        },
+                        PipelineData::Value(v, ..) => {
+                            Ok(PipelineData::Value(v.follow_cell_path(&cell_path, insensitive)?, None))
+                        },
+                        _ => Err(ShellError::IOError("can't follow stream paths".into())),
+                    }
+                },
+                // The first path member is a row number... 
+                PathMember::Int { val, span } => {
+                    match self {
+                        PipelineData::Value(v, _) => Ok(PipelineData::Value(v.follow_cell_path(&cell_path, insensitive)?, None)),
+                        PipelineData::ListStream(mut ls, _) => {
+                            if let Some(item) = ls.nth(*val) {
+                                Ok(PipelineData::Value(item.follow_cell_path(remaining, insensitive)?, None))
+                                // let remaining_cell_path_elements = item.follow_cell_path(remaining, insensitive);
+                            } else {
+                                todo!("!!!!!");
+                            }
+                        },
+                        PipelineData::ExternalStream { stdout, stderr, exit_code, span, metadata, trim_end_newline } => Err(ShellError::IOError("can't follow cell paths into external streams".into())),
+                        PipelineData::Empty => Err(ShellError::IOError("can't follow stream paths into an empty pipeline".into())),
+                    }
+                },
+            }
+        } else {
+            Ok(self)
+        }
+    }
+
+    pub fn follow_cell_path_streaming_try_2(
+        self,
+        cell_path: Vec<PathMember>,
+        insensitive: bool,
+    ) -> Result<PipelineData, ShellError> {
+        let span = self.span().unwrap_or(Span::unknown());
+        let mut ret = self;
+
+        for path_member in cell_path {
+            // TODO: this is hacky, refactor so we don't need std::slice::from_ref
+            ret = match ret {
+                PipelineData::Value(v, _) => PipelineData::Value(v.follow_cell_path(std::slice::from_ref(&path_member), insensitive)?, None),
+                PipelineData::ListStream(mut stream, _) => {
+                    match path_member {
+                        PathMember::String { .. } => {
+
+                            let ctrlc = stream.ctrlc.clone();
+                            // TODO: does error handling work this way? can we just return a Value::Error partway through?
+                            let iter = Box::new(stream.map(move |v| {
+                                match v.follow_cell_path(std::slice::from_ref(&path_member), insensitive) {
+                                    Ok(val) => val,
+                                    Err(error) => Value::Error { error },
+                                }
+                            }));
+                            let ls = ListStream{ stream: iter, ctrlc };
+                            PipelineData::ListStream(ls, None)
+                        },
+                        PathMember::Int { val, .. } => {
+                            match stream.nth(val) {
+                                Some(value) => PipelineData::Value(value, None),
+                                None => return Err(ShellError::AccessBeyondEndOfStream(span)),
+                            }
+                        },
+                    }
+                },
+                PipelineData::ExternalStream { .. } => return Err(ShellError::IOError("can't follow cell paths into external streams".into())),
+                PipelineData::Empty => return Err(ShellError::IOError("can't follow cell paths into an empty pipeline".into())),
+            };
+
+        }
+
+        Ok(ret)
     }
 
     pub fn upsert_cell_path(
