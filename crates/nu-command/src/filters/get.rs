@@ -64,11 +64,8 @@ impl Command for Get {
         let metadata = input.metadata();
 
         if rest.is_empty() {
-            input.follow_cell_path(
-                cell_path.members,
-                !sensitive,
-                ignore_errors,
-            )
+            // todo: ignore_errors should replace errors with Nothings
+            input.follow_cell_path(cell_path.members, !sensitive)
         } else {
             let mut output = vec![];
 

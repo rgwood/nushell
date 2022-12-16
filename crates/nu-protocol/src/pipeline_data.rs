@@ -268,7 +268,6 @@ impl PipelineData {
         self,
         cell_path: Vec<PathMember>,
         insensitive: bool,
-        ignore_errors: bool,
     ) -> Result<PipelineData, ShellError> {
         let span = self.span().unwrap_or(Span::unknown());
         let mut ret = self;
@@ -285,18 +284,9 @@ impl PipelineData {
                             let ctrlc = stream.ctrlc.clone();
                             // TODO: test error handling - confirm that things work as expected when an error comes back halfway through a liststream
                             let iter = Box::new(stream.map(move |v| {
-                                match v.follow_single_path_member(
-                                    &path_member,
-                                    insensitive,
-                                ) {
+                                match v.follow_single_path_member(&path_member, insensitive) {
                                     Ok(val) => val,
-                                    Err(error) => {
-                                        if ignore_errors {
-                                            Value::Nothing { span }
-                                        } else {
-                                            Value::Error { error }
-                                        }
-                                    }
+                                    Err(error) => Value::Error { error },
                                 }
                             }));
                             let ls = ListStream {
