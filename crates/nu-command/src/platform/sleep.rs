@@ -28,7 +28,6 @@ impl Command for Sleep {
         Signature::build("sleep")
             .input_output_types(vec![(Type::Nothing, Type::Nothing)])
             .required("duration", SyntaxShape::Duration, "time to sleep")
-            .rest("rest", SyntaxShape::Duration, "additional time")
             .category(Category::Platform)
     }
 
@@ -48,16 +47,13 @@ impl Command for Sleep {
         }
 
         let duration: i64 = call.req(engine_state, stack, 0)?;
-        let rest: Vec<i64> = call.rest(engine_state, stack, 1)?;
-
-        let total_dur =
-            duration_from_i64(duration) + rest.into_iter().map(duration_from_i64).sum::<Duration>();
+        let duration = duration_from_i64(duration);
 
         let ctrlc_ref = &engine_state.ctrlc.clone();
         let start = Instant::now();
         loop {
             thread::sleep(CTRL_C_CHECK_INTERVAL);
-            if start.elapsed() >= total_dur {
+            if start.elapsed() >= duration {
                 break;
             }
 
@@ -70,25 +66,13 @@ impl Command for Sleep {
     }
 
     fn examples(&self) -> Vec<Example> {
-        vec![
-            Example {
-                description: "Sleep for 1sec",
-                example: "sleep 1sec",
-                result: Some(Value::Nothing {
-                    span: Span::test_data(),
-                }),
-            },
-            // Example {
-            //     description: "Sleep for 3sec",
-            //     example: "sleep 1sec 1sec 1sec",
-            //     result: None,
-            // },
-            // Example {
-            //     description: "Send output after 1sec",
-            //     example: "sleep 1sec; echo done",
-            //     result: None,
-            // },
-        ]
+        vec![Example {
+            description: "Sleep for 1sec",
+            example: "sleep 1sec",
+            result: Some(Value::Nothing {
+                span: Span::test_data(),
+            }),
+        }]
     }
 }
 
