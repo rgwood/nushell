@@ -258,7 +258,7 @@ fn length_defaulted_columns() -> TestResult {
 
 #[test]
 fn get_fuzzy() -> TestResult {
-    run_test("(ls | get -i foo) == $nothing", "true")
+    run_test("ls | get -i foo | all {|f| $f == $nothing}", "true")
 }
 
 #[test]

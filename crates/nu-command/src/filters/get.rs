@@ -2,8 +2,8 @@ use nu_engine::CallExt;
 use nu_protocol::ast::{Call, CellPath};
 use nu_protocol::engine::{Command, EngineState, Stack};
 use nu_protocol::{
-    Category, Example, IntoInterruptiblePipelineData, PipelineData, Signature, Span, SyntaxShape,
-    Type, Value,
+    Category, Example, IntoInterruptiblePipelineData, ListStream, PipelineData, Signature, Span,
+    SyntaxShape, Type, Value,
 };
 
 #[derive(Clone)]
@@ -64,8 +64,44 @@ impl Command for Get {
         let metadata = input.metadata();
 
         if rest.is_empty() {
-            // todo: ignore_errors should replace errors with Nothings
-            input.follow_cell_path(cell_path.members, !sensitive)
+            if ignore_errors {
+                // replace errors with Value::Nothing
+                match input.follow_cell_path(cell_path.members, !sensitive)? {
+                    PipelineData::Value(value, _) => {
+                        let mapped = match value {
+                            Value::List { vals, span } => Value::List {
+                                vals: vals
+                                    .into_iter()
+                                    .map(|val| match val {
+                                        Value::Error { .. } => Value::nothing(span),
+                                        v => v,
+                                    })
+                                    .collect(),
+                                span,
+                            },
+                            Value::Error { .. } => Value::nothing(span),
+                            v => v,
+                        };
+                        Ok(PipelineData::Value(mapped, None))
+                    }
+                    PipelineData::ListStream(stream, _) => {
+                        let iter = stream.map(move |val| match val {
+                            Value::Error { .. } => Value::nothing(span),
+                            v => v,
+                        });
+                        Ok(PipelineData::ListStream(
+                            ListStream {
+                                stream: Box::new(iter),
+                                ctrlc,
+                            },
+                            None,
+                        ))
+                    }
+                    pd => Ok(pd),
+                }
+            } else {
+                input.follow_cell_path(cell_path.members, !sensitive)
+            }
         } else {
             let mut output = vec![];
 
@@ -82,6 +118,8 @@ impl Command for Get {
                 if ignore_errors {
                     if let Ok(val) = val {
                         output.push(val);
+                    } else {
+                        output.push(Value::nothing(span));
                     }
                 } else {
                     output.push(val?);

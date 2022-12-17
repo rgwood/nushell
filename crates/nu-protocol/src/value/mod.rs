@@ -20,7 +20,6 @@ use nu_utils::get_system_locale;
 use num_format::ToFormattedString;
 pub use range::*;
 use serde::{Deserialize, Serialize};
-use std::process::Output;
 use std::{
     borrow::Cow,
     collections::HashMap,
