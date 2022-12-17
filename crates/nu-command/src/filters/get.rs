@@ -84,19 +84,16 @@ impl Command for Get {
                         };
                         Ok(PipelineData::Value(mapped, None))
                     }
-                    PipelineData::ListStream(stream, _) => {
-                        let iter = stream.map(move |val| match val {
-                            Value::Error { .. } => Value::nothing(span),
-                            v => v,
-                        });
-                        Ok(PipelineData::ListStream(
-                            ListStream {
-                                stream: Box::new(iter),
-                                ctrlc,
-                            },
-                            None,
-                        ))
-                    }
+                    PipelineData::ListStream(stream, _) => Ok(PipelineData::ListStream(
+                        ListStream {
+                            stream: Box::new(stream.map(move |val| match val {
+                                Value::Error { .. } => Value::nothing(span),
+                                v => v,
+                            })),
+                            ctrlc,
+                        },
+                        None,
+                    )),
                     pd => Ok(pd),
                 }
             } else {
