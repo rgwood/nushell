@@ -4178,7 +4178,7 @@ dependencies = [
 [[package]]
 name = "reedline"
 version = "0.15.0"
-source = "git+https://github.com/nushell/reedline.git?branch=main#829a1a9f491a04d7b4159bc69d46cfc8184ccf53"
+source = "git+https://github.com/nushell/reedline.git?branch=main#d83cc56cb576d3baddfd9b945618775ac1fb44ac"
 dependencies = [
  "chrono",
  "crossterm 0.24.0",

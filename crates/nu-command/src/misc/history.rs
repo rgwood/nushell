@@ -52,6 +52,7 @@ impl Command for History {
             let long = call.has_flag("long");
             let ctrlc = engine_state.ctrlc.clone();
 
+            // FIXME: getting a history instance is horrible; can we find a nicer way and put it in a reusable function?
             let mut history_path = config_path;
             history_path.push("nushell");
             match engine_state.config.history_file_format {
@@ -63,37 +64,44 @@ impl Command for History {
                 }
             }
 
+            let mut history_reader: Box<dyn ReedlineHistory> =
+                match engine_state.config.history_file_format {
+                    HistoryFileFormat::Sqlite => SqliteBackedHistory::with_file(history_path)
+                        .map(|inner| Box::new(inner) as Box<dyn ReedlineHistory>)
+                        .map_err(|e| {
+                            ShellError::GenericError(
+                                "Error opening history file".into(),
+                                e.to_string(),
+                                Some(head),
+                                None,
+                                Vec::new(),
+                            )
+                        }),
+                    HistoryFileFormat::PlainText => FileBackedHistory::with_file(
+                        engine_state.config.max_history_size as usize,
+                        history_path,
+                    )
+                    .map(|inner| Box::new(inner) as Box<dyn ReedlineHistory>)
+                    .map_err(|e| e.into()),
+                }?;
+
             if clear {
-                let _ = std::fs::remove_file(history_path);
-                // TODO: FIXME also clear the auxiliary files when using sqlite
-                Ok(PipelineData::empty())
+                if let Err(e) = history_reader.clear() {
+                    Err(ShellError::GenericError(
+                        "Error clearing history".into(),
+                        e.to_string(),
+                        Some(head),
+                        None,
+                        Vec::new(),
+                    ))
+                } else {
+                    Ok(PipelineData::empty())
+                }
             } else {
-                let history_reader: Option<Box<dyn ReedlineHistory>> =
-                    match engine_state.config.history_file_format {
-                        HistoryFileFormat::Sqlite => SqliteBackedHistory::with_file(history_path)
-                            .map(|inner| {
-                                let boxed: Box<dyn ReedlineHistory> = Box::new(inner);
-                                boxed
-                            })
-                            .ok(),
-
-                        HistoryFileFormat::PlainText => FileBackedHistory::with_file(
-                            engine_state.config.max_history_size as usize,
-                            history_path,
-                        )
-                        .map(|inner| {
-                            let boxed: Box<dyn ReedlineHistory> = Box::new(inner);
-                            boxed
-                        })
-                        .ok(),
-                    };
-
                 match engine_state.config.history_file_format {
                     HistoryFileFormat::PlainText => Ok(history_reader
-                        .and_then(|h| {
-                            h.search(SearchQuery::everything(SearchDirection::Forward))
-                                .ok()
-                        })
+                        .search(SearchQuery::everything(SearchDirection::Forward))
+                        .ok()
                         .map(move |entries| {
                             entries
                                 .into_iter()
@@ -113,10 +121,8 @@ impl Command for History {
                         .ok_or(ShellError::FileNotFound(head))?
                         .into_pipeline_data(ctrlc)),
                     HistoryFileFormat::Sqlite => Ok(history_reader
-                        .and_then(|h| {
-                            h.search(SearchQuery::everything(SearchDirection::Forward))
-                                .ok()
-                        })
+                        .search(SearchQuery::everything(SearchDirection::Forward))
+                        .ok()
                         .map(move |entries| {
                             entries.into_iter().enumerate().map(move |(idx, entry)| {
                                 create_history_record(idx, entry, long, head)
