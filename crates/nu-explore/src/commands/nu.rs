@@ -1,8 +1,6 @@
 use super::ViewCommand;
 use crate::{
-    nu_common::{collect_pipeline, has_simple_value, run_command_with_value},
-    pager::Frame,
-    views::{Layout, Orientation, Preview, RecordView, View, ViewConfig},
+    explore::ExploreConfig, nu_common::{collect_pipeline, has_simple_value, run_command_with_value}, pager::Frame, views::{Layout, Orientation, Preview, RecordView, View, ViewConfig}
 };
 use anyhow::Result;
 use nu_protocol::{
@@ -48,6 +46,7 @@ impl ViewCommand for NuCmd {
         engine_state: &EngineState,
         stack: &mut Stack,
         value: Option<Value>,
+        cfg: &ExploreConfig,
     ) -> Result<Self::View> {
         let value = value.unwrap_or_default();
 
@@ -62,7 +61,7 @@ impl ViewCommand for NuCmd {
             return Ok(NuView::Preview(Preview::new(&text)));
         }
 
-        let mut view = RecordView::new(columns, values);
+        let mut view = RecordView::new(columns, values, cfg.clone());
 
         if is_record {
             view.set_orientation_current(Orientation::Left);
@@ -117,13 +116,6 @@ impl View for NuView {
         match self {
             NuView::Records(v) => v.exit(),
             NuView::Preview(v) => v.exit(),
-        }
-    }
-
-    fn setup(&mut self, config: ViewConfig<'_>) {
-        match self {
-            NuView::Records(v) => v.setup(config),
-            NuView::Preview(v) => v.setup(config),
         }
     }
 }

@@ -1,3 +1,5 @@
+use crate::explore::ExploreConfig;
+
 use super::pager::{Pager, Transition};
 use anyhow::Result;
 use nu_protocol::{
@@ -49,5 +51,6 @@ pub trait ViewCommand {
         engine_state: &EngineState,
         stack: &mut Stack,
         value: Option<Value>,
+        cfg: &ExploreConfig,
     ) -> Result<Self::View>;
 }

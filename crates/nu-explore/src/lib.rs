@@ -10,6 +10,7 @@ use anyhow::Result;
 use commands::{ExpandCmd, HelpCmd, NuCmd, QuitCmd, TableCmd, TryCmd};
 pub use default_context::add_explore_context;
 pub use explore::Explore;
+use explore::ExploreConfig;
 use nu_common::{collect_pipeline, has_simple_value, CtrlC};
 use nu_protocol::{
     engine::{EngineState, Stack},
@@ -43,7 +44,7 @@ fn run_pager(
     if is_binary {
         p.show_message("For help type :help");
 
-        let view = binary_view(input)?;
+        let view = binary_view(input, &config.explore_config)?;
         return p.run(engine_state, stack, ctrlc, Some(view), commands);
     }
 
@@ -69,11 +70,10 @@ fn run_pager(
 fn create_record_view(
     columns: Vec<String>,
     data: Vec<Vec<Value>>,
-    // wait, why would we use RecordView for something that isn't a record?
     is_record: bool,
     config: PagerConfig,
 ) -> Option<Page> {
-    let mut view = RecordView::new(columns, data);
+    let mut view = RecordView::new(columns, data, config.explore_config.clone());
     if is_record {
         view.set_orientation_current(Orientation::Left);
     }
@@ -91,14 +91,14 @@ fn help_view() -> Option<Page> {
     Some(Page::new(HelpCmd::view(), false))
 }
 
-fn binary_view(input: PipelineData) -> Result<Page> {
+fn binary_view(input: PipelineData, cfg: &ExploreConfig) -> Result<Page> {
     let data = match input {
         PipelineData::Value(Value::Binary { val, .. }, _) => val,
         PipelineData::ByteStream(bs, _) => bs.into_bytes()?,
         _ => unreachable!("checked beforehand"),
     };
 
-    let view = BinaryView::new(data);
+    let view = BinaryView::new(data, cfg);
 
     Ok(Page::new(view, true))
 }
