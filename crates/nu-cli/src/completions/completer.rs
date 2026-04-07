@@ -167,7 +167,7 @@ fn compute_pipeline_input_type(
             .position(|elem| elem.expr.span.contains(pos));
 
         let cursor_idx = match cursor_element_idx {
-            Some(idx) if idx == 0 => return None, // first element has no pipeline input
+            Some(0) => return None, // first element has no pipeline input
             Some(idx) => idx,
             None => continue,
         };
@@ -184,9 +184,7 @@ fn compute_pipeline_input_type(
                 let decl = working_set.get_decl(call.decl_id);
 
                 // Try flag-aware inference first
-                if let Some(inferred) =
-                    decl.infer_output_type(working_set, call, &current_type)
-                {
+                if let Some(inferred) = decl.infer_output_type(working_set, call, &current_type) {
                     current_type = inferred;
                     continue;
                 }
@@ -200,15 +198,17 @@ fn compute_pipeline_input_type(
                     let output_types: Vec<Type> = io_types
                         .into_iter()
                         .filter(|(in_type, _)| {
-                            current_type == Type::Any || in_type == &Type::Any || in_type == &current_type
+                            current_type == Type::Any
+                                || in_type == &Type::Any
+                                || in_type == &current_type
                         })
                         .map(|(_, out_type)| out_type)
                         .collect();
 
-                    current_type = match output_types.len() {
-                        0 => Type::Any,
-                        1 => output_types.into_iter().next().unwrap(),
-                        _ => Type::Any, // multiple possibilities, can't narrow
+                    current_type = if output_types.len() == 1 {
+                        output_types.into_iter().next().unwrap_or(Type::Any)
+                    } else {
+                        Type::Any // 0 or multiple possibilities, can't narrow
                     };
                 }
             } else {
@@ -325,8 +325,7 @@ impl NuCompleter {
         let Some(text) = contents.get(start_offset..pos) else {
             return vec![];
         };
-        let pipeline_input_type =
-            compute_pipeline_input_type(&block, working_set, pos_to_search);
+        let pipeline_input_type = compute_pipeline_input_type(&block, working_set, pos_to_search);
 
         self.complete_by_expression(
             working_set,
@@ -347,6 +346,7 @@ impl NuCompleter {
     /// * `pos` - cursor position, should be > offset
     /// * `prefix_str` - all the text before the cursor, within the `element_expression`
     /// * `strip` - whether to strip the extra placeholder from a span
+    #[allow(clippy::too_many_arguments)]
     fn complete_by_expression(
         &self,
         working_set: &StateWorkingSet,

@@ -13,7 +13,17 @@ impl Command for SysUsers {
     fn signature(&self) -> Signature {
         Signature::build("sys users")
             .category(Category::System)
-            .input_output_types(vec![(Type::Nothing, Type::table())])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Table(
+                    [
+                        ("id".into(), Type::Any),
+                        ("name".into(), Type::String),
+                        ("groups".into(), Type::list(Type::String)),
+                    ]
+                    .into(),
+                ),
+            )])
     }
 
     fn description(&self) -> &str {

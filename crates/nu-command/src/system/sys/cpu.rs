@@ -44,6 +44,26 @@ impl Command for SysCpu {
             result: None,
         }]
     }
+
+    fn infer_output_type(
+        &self,
+        working_set: &StateWorkingSet,
+        call: &nu_protocol::ast::Call,
+        _input_type: &Type,
+    ) -> Option<Type> {
+        let long = call.has_flag_const(working_set, "long").unwrap_or(false);
+        let mut columns: Vec<(String, Type)> = vec![
+            ("name".into(), Type::String),
+            ("brand".into(), Type::String),
+            ("vendor_id".into(), Type::String),
+            ("freq".into(), Type::Int),
+            ("load_average".into(), Type::String),
+        ];
+        if long {
+            columns.push(("cpu_usage".into(), Type::Float));
+        }
+        Some(Type::Table(columns.into()))
+    }
 }
 
 fn cpu(long: bool, span: Span) -> Value {

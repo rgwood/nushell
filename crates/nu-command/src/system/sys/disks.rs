@@ -14,7 +14,21 @@ impl Command for SysDisks {
         Signature::build("sys disks")
             .filter()
             .category(Category::System)
-            .input_output_types(vec![(Type::Nothing, Type::table())])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Table(
+                    [
+                        ("device".into(), Type::String),
+                        ("type".into(), Type::String),
+                        ("mount".into(), Type::String),
+                        ("total".into(), Type::Filesize),
+                        ("free".into(), Type::Filesize),
+                        ("removable".into(), Type::Bool),
+                        ("kind".into(), Type::String),
+                    ]
+                    .into(),
+                ),
+            )])
     }
 
     fn description(&self) -> &str {

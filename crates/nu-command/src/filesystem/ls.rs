@@ -196,10 +196,8 @@ impl Command for Ls {
     ) -> Option<Type> {
         let long = call.has_flag_const(working_set, "long").unwrap_or(false);
 
-        let mut columns: Vec<(String, Type)> = vec![
-            ("name".into(), Type::String),
-            ("type".into(), Type::String),
-        ];
+        let mut columns: Vec<(String, Type)> =
+            vec![("name".into(), Type::String), ("type".into(), Type::String)];
 
         if long {
             columns.push(("target".into(), Type::String));

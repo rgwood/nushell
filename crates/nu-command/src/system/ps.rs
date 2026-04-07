@@ -53,6 +53,56 @@ impl Command for Ps {
         run_ps(engine_state, stack, call)
     }
 
+    fn infer_output_type(
+        &self,
+        working_set: &StateWorkingSet,
+        call: &nu_protocol::ast::Call,
+        _input_type: &Type,
+    ) -> Option<Type> {
+        let long = call.has_flag_const(working_set, "long").unwrap_or(false);
+        let mut columns: Vec<(String, Type)> = vec![
+            ("pid".into(), Type::Int),
+            ("ppid".into(), Type::Int),
+            ("name".into(), Type::String),
+        ];
+        #[cfg(not(windows))]
+        columns.push(("status".into(), Type::String));
+        columns.push(("cpu".into(), Type::Float));
+        columns.push(("mem".into(), Type::Filesize));
+        columns.push(("virtual".into(), Type::Filesize));
+        if long {
+            columns.push(("command".into(), Type::String));
+            #[cfg(target_os = "linux")]
+            {
+                columns.push(("start_time".into(), Type::Date));
+                columns.push(("user_id".into(), Type::Int));
+                columns.push(("process_group_id".into(), Type::Int));
+                columns.push(("session_id".into(), Type::Int));
+                columns.push(("priority".into(), Type::Int));
+                columns.push(("process_threads".into(), Type::Int));
+                columns.push(("cwd".into(), Type::String));
+            }
+            #[cfg(windows)]
+            {
+                columns.push(("start_time".into(), Type::Date));
+                columns.push(("user".into(), Type::String));
+                columns.push(("user_sid".into(), Type::String));
+                columns.push(("priority".into(), Type::Int));
+                columns.push(("cwd".into(), Type::String));
+                columns.push(("environment".into(), Type::list(Type::String)));
+            }
+            #[cfg(target_os = "macos")]
+            {
+                columns.push(("start_time".into(), Type::Date));
+                columns.push(("user_id".into(), Type::Int));
+                columns.push(("priority".into(), Type::Int));
+                columns.push(("process_threads".into(), Type::Int));
+                columns.push(("cwd".into(), Type::String));
+            }
+        }
+        Some(Type::Table(columns.into()))
+    }
+
     fn examples(&self) -> Vec<Example<'_>> {
         vec![
             Example {

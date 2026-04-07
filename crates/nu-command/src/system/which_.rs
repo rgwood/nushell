@@ -16,7 +16,17 @@ impl Command for Which {
 
     fn signature(&self) -> Signature {
         Signature::build("which")
-            .input_output_types(vec![(Type::Nothing, Type::table())])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Table(
+                    [
+                        ("command".into(), Type::String),
+                        ("path".into(), Type::String),
+                        ("type".into(), Type::String),
+                    ]
+                    .into(),
+                ),
+            )])
             .allow_variants_without_examples(true)
             .rest("applications", SyntaxShape::String, "Application(s).")
             .switch("all", "List all executables.", Some('a'))

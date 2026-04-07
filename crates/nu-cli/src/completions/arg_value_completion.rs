@@ -17,7 +17,7 @@ use nu_protocol::{
 fn shape_contains_cell_path(shape: &SyntaxShape) -> bool {
     match shape {
         SyntaxShape::CellPath => true,
-        SyntaxShape::OneOf(shapes) => shapes.iter().any(|s| shape_contains_cell_path(s)),
+        SyntaxShape::OneOf(shapes) => shapes.iter().any(shape_contains_cell_path),
         _ => false,
     }
 }
@@ -89,26 +89,25 @@ impl<'a> Completer for ArgValueCompletion<'a> {
         }
 
         // Try column name completion from pipeline input type
-        if let Some(input_type) = self.pipeline_input_type {
-            if let ArgType::Positional(positional_arg_index) = self.arg_type {
-                let signature = decl.signature();
-                if let Some(pos_arg) = signature.get_positional(positional_arg_index) {
-                    if shape_contains_cell_path(&pos_arg.shape) {
-                        let suggestions =
-                            super::cell_path_completions::get_suggestions_by_type(
-                                input_type,
-                                reedline::Span {
-                                    start: span.start - offset,
-                                    end: span.end - offset,
-                                },
-                            );
-                        if !suggestions.is_empty() {
-                            for suggestion in suggestions {
-                                matcher.add_semantic_suggestion(suggestion);
-                            }
-                            return matcher.suggestion_results();
-                        }
+        if let Some(input_type) = self.pipeline_input_type
+            && let ArgType::Positional(positional_arg_index) = self.arg_type
+        {
+            let signature = decl.signature();
+            if let Some(pos_arg) = signature.get_positional(positional_arg_index)
+                && shape_contains_cell_path(&pos_arg.shape)
+            {
+                let suggestions = super::cell_path_completions::get_suggestions_by_type(
+                    input_type,
+                    reedline::Span {
+                        start: span.start - offset,
+                        end: span.end - offset,
+                    },
+                );
+                if !suggestions.is_empty() {
+                    for suggestion in suggestions {
+                        matcher.add_semantic_suggestion(suggestion);
                     }
+                    return matcher.suggestion_results();
                 }
             }
         }

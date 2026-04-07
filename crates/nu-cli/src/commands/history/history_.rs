@@ -60,6 +60,39 @@ impl Command for History {
         ]
     }
 
+    fn infer_output_type(
+        &self,
+        working_set: &StateWorkingSet,
+        call: &nu_protocol::ast::Call,
+        _input_type: &Type,
+    ) -> Option<Type> {
+        // Best-effort: assume the (default) sqlite history backend. Plaintext history
+        // produces fewer columns; users on plaintext history won't get column completion.
+        let long = call.has_flag_const(working_set, "long").unwrap_or(false);
+        let columns: Vec<(String, Type)> = if long {
+            vec![
+                ("item_id".into(), Type::Int),
+                ("start_timestamp".into(), Type::Date),
+                ("command".into(), Type::String),
+                ("session_id".into(), Type::Int),
+                ("hostname".into(), Type::String),
+                ("cwd".into(), Type::String),
+                ("duration".into(), Type::Duration),
+                ("exit_status".into(), Type::Int),
+                ("idx".into(), Type::Int),
+            ]
+        } else {
+            vec![
+                ("start_timestamp".into(), Type::Date),
+                ("command".into(), Type::String),
+                ("cwd".into(), Type::String),
+                ("duration".into(), Type::Duration),
+                ("exit_status".into(), Type::Int),
+            ]
+        };
+        Some(Type::Table(columns.into()))
+    }
+
     fn run(
         &self,
         engine_state: &EngineState,

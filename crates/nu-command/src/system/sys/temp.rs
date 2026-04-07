@@ -13,7 +13,17 @@ impl Command for SysTemp {
         Signature::build("sys temp")
             .filter()
             .category(Category::System)
-            .input_output_types(vec![(Type::Nothing, Type::table())])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Table(
+                    [
+                        ("unit".into(), Type::String),
+                        ("temp".into(), Type::Float),
+                        ("high".into(), Type::Float),
+                    ]
+                    .into(),
+                ),
+            )])
     }
 
     fn description(&self) -> &str {
