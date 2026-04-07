@@ -14,7 +14,19 @@ impl Command for SysNet {
         Signature::build("sys net")
             .filter()
             .category(Category::System)
-            .input_output_types(vec![(Type::Nothing, Type::table())])
+            .input_output_types(vec![(
+                Type::Nothing,
+                Type::Table(
+                    [
+                        ("name".into(), Type::String),
+                        ("mac".into(), Type::String),
+                        ("ip".into(), Type::list(Type::Any)),
+                        ("sent".into(), Type::Filesize),
+                        ("recv".into(), Type::Filesize),
+                    ]
+                    .into(),
+                ),
+            )])
     }
 
     fn description(&self) -> &str {

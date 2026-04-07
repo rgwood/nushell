@@ -178,6 +178,25 @@ impl Command for Du {
             result: None,
         }]
     }
+
+    fn infer_output_type(
+        &self,
+        working_set: &StateWorkingSet,
+        call: &nu_protocol::ast::Call,
+        _input_type: &Type,
+    ) -> Option<Type> {
+        let long = call.has_flag_const(working_set, "long").unwrap_or(false);
+        let mut columns: Vec<(String, Type)> = vec![
+            ("path".into(), Type::String),
+            ("apparent".into(), Type::Filesize),
+            ("physical".into(), Type::Filesize),
+        ];
+        if long {
+            columns.push(("directories".into(), Type::Any));
+            columns.push(("files".into(), Type::Any));
+        }
+        Some(Type::Table(columns.into()))
+    }
 }
 
 fn du_for_one_pattern(
